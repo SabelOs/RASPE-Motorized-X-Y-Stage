@@ -1,12 +1,10 @@
-import serial
 import time
-import re
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 
-import Serial_Interface
-
+# ===============================
+#           Scan Logic
+# ===============================
 class Scanner:
     def __init__(self, serial_conn, extension, center, speed, delay_ms, data_array, im, stepsize, xpos, ypos):
         self.serial = serial_conn
@@ -22,7 +20,7 @@ class Scanner:
         self.im = im
         self.abort = False
         # create the dot once, with initial position
-        (self.dot,) = self.im.axes.plot(self.xPos, self.yPos, "go", markersize=8)
+        (self.dot,) = self.im.axes.plot(self.xPos, self.yPos, "go", markersize=5)
 
     def update_heatmap(self):
         valid = np.isfinite(self.data)
@@ -39,7 +37,7 @@ class Scanner:
     
     
     def run_scan(self):
-        if self.area <= 0:
+        if self.extension <= 0:
             print("[error] Area must be > 0")
             return
 
@@ -75,30 +73,25 @@ class Scanner:
         if not self.serial.wait_for_ack():
             return
         
-        print("Current Position:", self.xPos, self.yPos)
+        #print("Current Position:", self.xPos, self.yPos)
 
-        for i in range(math.floor(self.area/self.stepsize)):
-            for j in range(math.floor(self.area/self.stepsize)):
+        for i in range(math.floor((2*self.extension+1)/self.stepsize)):
+            for j in range(math.floor((2*self.extension+1)/self.stepsize)):
                 if self.abort:
                     return
-                print("Current Position:", self.xPos, self.yPos)
+                #print("Current Position:", self.xPos, self.yPos)
                 
-                #Go one x-step back to ensure we start measurement at the correct point
-                if j == 0 and i==0:
-                    if not self.move_axis('x',-self.stepsize):
-                        return
+                #measure ADC Value
+                val = self.serial.adc_get_value()
+                if (0 <= self.yPos < self.data.shape[0]) and (0 <= self.xPos < self.data.shape[1]):
+                    self.data[self.yPos, self.xPos] = val if val is not None else np.nan 
+                    #print("saved ADC value to:", self.xPos, self.yPos)
                 
                 #Do x-step
                 if not self.move_axis('x', self.stepsize):
                     return
                 
-                #measure ADC Value
-                val = self.serial.wait_for_adc_value(timeout=2.0 + self.delay_ms / 1000.0)
-                if (0 <= self.yPos < self.data.shape[0]) and (0 <= self.xPos < self.data.shape[1]):
-                    self.data[self.yPos, self.xPos] = val if val is not None else np.nan 
-                    print("saved ADC value to:", self.xPos, self.yPos)
                 
-                self.update_heatmap()
             #go back x-row
             if not self.move_axis('x', -self.stepsize* (j+1)):
                 return
@@ -113,8 +106,7 @@ class Scanner:
         # Return to center
         self.move_axis('x', self.center[0] - self.xPos)
         self.move_axis('y', self.center[1] - self.yPos)
-        self.update_heatmap()
-        print("Current Position:", self.xPos, self.yPos)
+        #print("Current Position:", self.xPos, self.yPos)
 
 
 
@@ -137,12 +129,15 @@ class Scanner:
         if not self.serial.wait_for_ack(timeout=5.0):
             print(f"[error] No ACK for {cmd}")
             return False
-
+        time.sleep(self.delay_ms/1000)
+        
         # Update internal tracking
         if axis == 'x':
             self.xPos += steps
         else:
             self.yPos += steps
+        #update the positions in the plot
+        self.update_heatmap()
 
         return True
 

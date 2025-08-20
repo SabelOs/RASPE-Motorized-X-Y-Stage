@@ -7,11 +7,15 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import serial.tools.list_ports
-
+import sys
 
 from Scan import Scanner
 from Serial_Interface import SerialConnection  
 
+
+# ===============================
+#            Main App
+# ===============================
 class ScanApp(tk.Tk):
     
     def __init__(self, baudrate=115200, workspace_size=200):
@@ -32,6 +36,9 @@ class ScanApp(tk.Tk):
 
         #Now create the scanner object:
         self._create_scanner()
+        
+        # Ensure clean exit when window is closed
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     
     
@@ -44,59 +51,99 @@ class ScanApp(tk.Tk):
         control_frame = ttk.Frame(self, padding=10)
         control_frame.pack(side=tk.LEFT, fill=tk.Y)
 
-        # --- Serial Port Selection ---
-        ttk.Label(control_frame, text="Serial Port:").grid(row=0, column=0, sticky="w")
+                # --- Serial Control ---
+        serial_label = ttk.Label(control_frame, text="--- Serial Control ---", font=("TkDefaultFont", 10, "bold"))
+        serial_label.grid(row=0, column=0, columnspan=3, pady=(5, 2), sticky="w")
+
+        ttk.Label(control_frame, text="Serial Port:").grid(row=1, column=0, sticky="w")
         self.port_combo = ttk.Combobox(control_frame, width=15, state="readonly")
-        self.port_combo.grid(row=0, column=1, padx=5)
+        self.port_combo.grid(row=1, column=1, padx=5)
         self._refresh_ports()
 
         refresh_btn = ttk.Button(control_frame, text="Refresh", command=self._refresh_ports)
-        refresh_btn.grid(row=0, column=2, padx=5)
+        refresh_btn.grid(row=1, column=2, padx=5)
 
         self.connect_btn = ttk.Button(control_frame, text="Connect", command=self._connect_serial)
-        self.connect_btn.grid(row=1, column=0, columnspan=2, pady=5)
+        self.connect_btn.grid(row=2, column=0, columnspan=2, pady=5)
 
         if self.serial_conn.is_open:
             self.conn_status = tk.StringVar(value="Not connected")
         else:
             self.conn_status = tk.StringVar(value="Not connected")
-        ttk.Label(control_frame, textvariable=self.conn_status, foreground="red").grid(row=1, column=2, padx=5)
+        ttk.Label(control_frame, textvariable=self.conn_status, foreground="red").grid(row=2, column=2, padx=5)
 
-        # --- Scan Parameters ---
-        ttk.Label(control_frame, text="Extension:").grid(row=2, column=0, sticky="w")
+        # --- Scan Control ---
+        scan_label = ttk.Label(control_frame, text="--- Scan Control ---", font=("TkDefaultFont", 10, "bold"))
+        scan_label.grid(row=3, column=0, columnspan=3, pady=(10, 2), sticky="w")
+
+        ttk.Label(control_frame, text="Extension:").grid(row=4, column=0, sticky="w")
         self.ext_entry = ttk.Entry(control_frame, width=10)
         self.ext_entry.insert(0, "3")  # example: 3 -> 7x7 grid
-        self.ext_entry.grid(row=2, column=1)
+        self.ext_entry.grid(row=4, column=1)
         self.ext_entry.bind("<KeyRelease>", self.on_center_change)
 
-
-        ttk.Label(control_frame, text="Center X:").grid(row=3, column=0, sticky="w")
+        ttk.Label(control_frame, text="Center X:").grid(row=5, column=0, sticky="w")
         self.center_x_entry = ttk.Entry(control_frame, width=10)
         self.center_x_entry.insert(0, "100")
-        self.center_x_entry.grid(row=3, column=1)
+        self.center_x_entry.grid(row=5, column=1)
         self.center_x_entry.bind("<KeyRelease>", self.on_center_change)
 
-        ttk.Label(control_frame, text="Center Y:").grid(row=4, column=0, sticky="w")
+        ttk.Label(control_frame, text="Center Y:").grid(row=6, column=0, sticky="w")
         self.center_y_entry = ttk.Entry(control_frame, width=10)
         self.center_y_entry.insert(0, "100")
-        self.center_y_entry.grid(row=4, column=1)
+        self.center_y_entry.grid(row=6, column=1)
         self.center_y_entry.bind("<KeyRelease>", self.on_center_change)
 
-        ttk.Label(control_frame, text="Stepsize:").grid(row=5, column=0, sticky="w")
+        ttk.Label(control_frame, text="Stepsize:").grid(row=7, column=0, sticky="w")
         self.stepsize_entry = ttk.Entry(control_frame, width=10)
         self.stepsize_entry.insert(0, "1")
-        self.stepsize_entry.grid(row=5, column=1)
+        self.stepsize_entry.grid(row=7, column=1)
 
-        ttk.Label(control_frame, text="Delay (ms):").grid(row=6, column=0, sticky="w")
+        ttk.Label(control_frame, text="Delay (ms):").grid(row=8, column=0, sticky="w")
         self.delay_entry = ttk.Entry(control_frame, width=10)
         self.delay_entry.insert(0, "100")
-        self.delay_entry.grid(row=6, column=1)
+        self.delay_entry.grid(row=8, column=1)
 
         self.start_button = ttk.Button(control_frame, text="Start Scan", command=self.start_scan)
-        self.start_button.grid(row=7, column=0)
+        self.start_button.grid(row=9, column=0)
 
         self.abort_button = ttk.Button(control_frame, text="Abort", command=self.abort_scan)
-        self.abort_button.grid(row=7, column=1)
+        self.abort_button.grid(row=9, column=1)
+
+        # --- Manual Control ---
+        manual_label = ttk.Label(control_frame, text="--- Manual Control ---", font=("TkDefaultFont", 10, "bold"))
+        manual_label.grid(row=10, column=0, columnspan=3, pady=(10, 2), sticky="w")
+
+        # Shared stepsize variable
+        self.stepsize_var = tk.StringVar(value="1")
+
+        # Bind the scan control stepsize entry to the shared var
+        self.stepsize_entry.config(textvariable=self.stepsize_var)
+
+        # Manual stepsize entry (shares the same var)
+        ttk.Label(control_frame, text="Stepsize:").grid(row=11, column=0, sticky="w")
+        self.manual_stepsize_entry = ttk.Entry(control_frame, width=10, textvariable=self.stepsize_var)
+        self.manual_stepsize_entry.grid(row=11, column=1)
+
+        # Row index for manual buttons (n = 12 now)
+        n = 12
+
+        self.up_btn = ttk.Button(control_frame, text="UP",
+                                 command=lambda: self.scanner_move("y", +1))
+        self.up_btn.grid(row=n, column=1, pady=2)
+
+        self.left_btn = ttk.Button(control_frame, text="LEFT",
+                                   command=lambda: self.scanner_move("x", -1))
+        self.left_btn.grid(row=n+1, column=0, pady=2)
+
+        self.right_btn = ttk.Button(control_frame, text="RIGHT",
+                                    command=lambda: self.scanner_move("x", +1))
+        self.right_btn.grid(row=n+1, column=2, pady=2)
+
+        self.down_btn = ttk.Button(control_frame, text="DOWN",
+                                   command=lambda: self.scanner_move("y", -1))
+        self.down_btn.grid(row=n+2, column=1, pady=2)
+
 
         # Right plot panel
         plot_frame = ttk.Frame(self)
@@ -241,15 +288,30 @@ class ScanApp(tk.Tk):
             return
 
         self.draw_overlay((center_x, center_y), extension)
-        #update scanner
-        self.scanner.center[0]= center_x
-        self.scanner.center[1]= center_y
-        self.scanner.extension= extension
+        
+        if self.scanner != None:
+            #update scanner
+            self.scanner.center[0]= center_x
+            self.scanner.center[1]= center_y
+            self.scanner.extension= extension
 
 
-    def scanner_move(self,axis,direction):
-        self.scanner.move_axis(axis,direction*int(self.stepsize_entry.get()))
+
+    def scanner_move(self, axis, direction):
+        try:
+            step = int(self.stepsize_entry.get())
+        except ValueError:
+            step = 1  # fallback if entry is empty/invalid
+
+        # direction is expected to be ±1
+        self.scanner.move_axis(axis, direction * step)
         self.serial_conn.wait_for_ack()
+    
+    def on_closing(self):
+        if self.serial_conn.is_open():
+            self.serial_conn.close()
+        self.destroy()
+        sys.exit(0)  # force Python to exit
 
 if __name__ == "__main__":
     app = ScanApp()

@@ -98,6 +98,13 @@ void executeCommand(String cmd) {
     return;
   }
 
+  // ----- Manual ADC Read -----
+  if (cmd == "adc read") {
+    int voltage = analogRead(ADC_PIN);
+    sendLine("ADC: " + String(voltage));
+    return;
+  }
+
   // ----- Status -----
   if (cmd == "status") {
     sendLine("tau=" + String(tau));
@@ -109,15 +116,16 @@ void executeCommand(String cmd) {
   // ----- Help -----
   if (cmd == "help") {
     sendLine("Commands:");
-    sendLine("  x+[steps]  - Move X axis CCW");
-    sendLine("  x-[steps]  - Move X axis CW");
-    sendLine("  y+[steps]  - Move Y axis CCW");
-    sendLine("  y-[steps]  - Move Y axis CW");
-    sendLine("  set tau=N  - Set delay after move in ms");
-    sendLine("  set speed=N- Set motor speed");
-    sendLine("  adc on/off - Enable/disable ADC read");
-    sendLine("  status     - Show current settings");
-    sendLine("  help       - Show this help");
+    sendLine("  x+[steps]   - Move X axis CCW");
+    sendLine("  x-[steps]   - Move X axis CW");
+    sendLine("  y+[steps]   - Move Y axis CCW");
+    sendLine("  y-[steps]   - Move Y axis CW");
+    sendLine("  set tau=N   - Set delay after move in ms");
+    sendLine("  set speed=N - Set motor speed");
+    sendLine("  adc on/off  - Enable/disable ADC read after moves");
+    sendLine("  adc read    - Read ADC value immediately");
+    sendLine("  status      - Show current settings");
+    sendLine("  help        - Show this help");
     return;
   }
 

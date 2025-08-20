@@ -1,9 +1,6 @@
 import serial
 import time
 import re
-import numpy as np
-import matplotlib.pyplot as plt
-import math
 
 # ===============================
 # Serial connection handler class
@@ -79,4 +76,14 @@ class SerialConnection:
                 return int(match.group(1))
         return None
 
-
+    def adc_get_value(self, timeout=2.0):
+        """
+        Send 'adc read' command to Arduino and return the ADC value.
+        Returns None if no valid response is received within timeout.
+        """
+        self.send_command("adc read")
+        value = self.wait_for_adc_value(timeout=timeout)
+        if value is not None:
+            return value
+        else:
+            print("[serial] Failed to read ADC value.")
