@@ -178,8 +178,33 @@ class ScanApp(tk.Tk):
         self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame)
         self.toolbar.update()
 
+        # --- Colormap Limits Controls ---
+        caxis_frame = ttk.Frame(plot_frame, padding=5)
+        caxis_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Checkbox for manual override
+        self.caxis_manual_var = tk.BooleanVar(value=False)
+        self.caxis_check = ttk.Checkbutton(
+            caxis_frame, text="Manual colormap limits", variable=self.caxis_manual_var,
+            command=self.apply_caxis_limits
+        )
+        self.caxis_check.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(caxis_frame, text="Min:").pack(side=tk.LEFT)
+        self.cmin_entry = ttk.Entry(caxis_frame, width=8)
+        self.cmin_entry.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(caxis_frame, text="Max:").pack(side=tk.LEFT)
+        self.cmax_entry = ttk.Entry(caxis_frame, width=8)
+        self.cmax_entry.pack(side=tk.LEFT, padx=5)
+
+        apply_btn = ttk.Button(caxis_frame, text="Apply", command=self.apply_caxis_limits)
+        apply_btn.pack(side=tk.LEFT, padx=5)
+
+
         #Lastly, draw the rectangle and center cross
         self.on_center_change()
+
 
 
     def _create_scanner(self):
@@ -273,6 +298,7 @@ class ScanApp(tk.Tk):
             self.scanner.abort = False
 
         self.scanner.run_scan()
+        self.apply_caxis_limits()
 
     
     def abort_scan(self):
@@ -312,6 +338,27 @@ class ScanApp(tk.Tk):
             self.serial_conn.close()
         self.destroy()
         sys.exit(0)  # force Python to exit
+    
+    def apply_caxis_limits(self):
+        if self.caxis_manual_var.get():
+            # Manual mode
+            try:
+                cmin = float(self.cmin_entry.get())
+                cmax = float(self.cmax_entry.get())
+                self.im.set_clim(vmin=cmin, vmax=cmax)
+            except ValueError:
+                print("[warning] Invalid manual colormap limits")
+                return
+        else:
+            # Auto mode: use min/max from data
+            finite_vals = self.data[np.isfinite(self.data)]
+            if finite_vals.size > 0:
+                self.im.set_clim(vmin=np.min(finite_vals), vmax=np.max(finite_vals))
+            else:
+                print("[warning] No valid data for autoscale")
+                return
+
+        self.canvas.draw_idle()
 
 if __name__ == "__main__":
     app = ScanApp()

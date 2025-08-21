@@ -97,7 +97,7 @@ class Scanner:
                 return
             
             #do y-step
-            if i < math.floor(self.area/self.stepsize) - 1:
+            if i < math.floor((2*self.extension+1)/self.stepsize) - 1:
                 if not self.move_axis('y', self.stepsize):
                     return
 

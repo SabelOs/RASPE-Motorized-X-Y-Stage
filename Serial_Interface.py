@@ -57,7 +57,7 @@ class SerialConnection:
                 return s
         return None
 
-    def wait_for_ack(self, timeout=2.0):
+    def wait_for_ack(self, timeout=20.0):
         deadline = time.time() + timeout
         while time.time() < deadline:
             line = self.read_line(timeout=deadline - time.time())
