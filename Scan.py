@@ -26,6 +26,10 @@ class Scanner:
         valid = np.isfinite(self.data)
         if np.any(valid):
             self.im.set_clim(vmin=np.nanmin(self.data), vmax=np.nanmax(self.data))
+        else:
+            # reset to something neutral
+            self.im.set_clim(vmin=0, vmax=1)
+
         self.im.set_data(self.data)
 
         # update dot position
@@ -36,7 +40,7 @@ class Scanner:
 
     
     def run_scan(self):
-        print("STEPSIZE:", self.stepsize)
+        #print("STEPSIZE:", self.stepsize)
         if self.extension <= 0:
             print("[error] Area must be > 0")
             return

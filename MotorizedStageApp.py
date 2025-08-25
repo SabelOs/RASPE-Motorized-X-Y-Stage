@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
@@ -144,8 +145,17 @@ class ScanApp(tk.Tk):
         self.down_btn = ttk.Button(control_frame, text="DOWN",
                                    command=lambda: self.scanner_move("y", -1))
         self.down_btn.grid(row=n+2, column=1, pady=2)
+        
+        #Data Export section
+        export_label = ttk.Label(control_frame, text="--- Data Setting ---", font=("TkDefaultFont", 10, "bold"))
+        export_label.grid(row=n+3, column=0, columnspan=3, pady=(10, 2), sticky="w")
 
-
+        self.export_btn = ttk.Button(control_frame, text="Export Data", command=lambda: self.export_data_to_csv())
+        self.export_btn.grid(row=n+4, column=1, pady=2)
+        
+        self.del_btn = ttk.Button(control_frame, text = "Delete Data", command =lambda: self.delete_data())
+        self.del_btn.grid(row=n+5,column=1,pady = 2)
+        
         # Right plot panel
         plot_frame = ttk.Frame(self)
         plot_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -379,6 +389,29 @@ class ScanApp(tk.Tk):
                 return
 
         self.canvas.draw_idle()
+    
+
+    def export_data_to_csv(self):
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Save data as..."
+        )
+
+        if file_path:
+            np.savetxt(file_path, self.data, delimiter=",", fmt="%.6f")
+            print(f"Data saved to {file_path}")
+        else:
+            print("Save cancelled.")  
+    
+    def delete_data(self):
+        new_data = np.full((self.workspace_size, self.workspace_size), np.nan, dtype=float)
+        self.data = new_data
+        self.scanner.data = new_data   # keep scanner in sync
+        try:
+            self.scanner.update_heatmap()
+        except ValueError:
+            print("Could not reset Data, as there was no scan before!")    
 
 if __name__ == "__main__":
     app = ScanApp()
