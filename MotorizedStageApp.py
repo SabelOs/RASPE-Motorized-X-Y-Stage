@@ -18,7 +18,7 @@ from Serial_Interface import SerialConnection
 # ===============================
 class ScanApp(tk.Tk):
     
-    def __init__(self, baudrate=115200, workspace_size=200):
+    def __init__(self, baudrate=115200, workspace_size=1000):
         super().__init__()
         self.title("Arduino Scanner")
         self.geometry("1000x600")
