@@ -34,7 +34,7 @@ Control software for a **motorized X-Y stage** setup, designed to scan an area a
 
 ## Usage
 
-1. **Upload the firmware** to the Arduino Uno (`xy_stage.ino`).  
+1. **Upload the firmware** to the Arduino Uno (`sketch_aug11a.ino`).  
 2. **Start the Python software** and connect to the Arduino via the UI.  
 3. **Configure scan parameters** (grid size, step size, ADC channel) in the UI.  
 4. **Run the scan** – the X-Y stage moves step-by-step, while ADC values are collected and streamed.  
