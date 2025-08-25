@@ -1,7 +1,7 @@
 #include <CNCShield.h>
 
 #define ADC_PIN A5
-#define MICROSTEPS_PER_STEP 100
+#define MICROSTEPS_PER_STEP 10
 
 // CNC Shield setup
 CNCShield cnc_shield;

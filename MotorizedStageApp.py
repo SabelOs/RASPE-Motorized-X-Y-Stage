@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import serial.tools.list_ports
 import sys
+import math
 
 from Scan import Scanner
 from Serial_Interface import SerialConnection  
@@ -17,8 +18,8 @@ from Serial_Interface import SerialConnection
 #            Main App
 # ===============================
 class ScanApp(tk.Tk):
-    
-    def __init__(self, baudrate=115200, workspace_size=1000):
+    DataSize = 1000
+    def __init__(self, baudrate=115200, workspace_size=DataSize):
         super().__init__()
         self.title("Arduino Scanner")
         self.geometry("1000x600")
@@ -27,7 +28,7 @@ class ScanApp(tk.Tk):
         self.scanner = None
         self.workspace_size = workspace_size
         self.data = np.full((workspace_size, workspace_size), np.nan, dtype=float)
-
+        
         # Store plot elements for overlay
         self.scan_rect = None
         self.center_marker = None
@@ -84,13 +85,13 @@ class ScanApp(tk.Tk):
 
         ttk.Label(control_frame, text="Center X:").grid(row=5, column=0, sticky="w")
         self.center_x_entry = ttk.Entry(control_frame, width=10)
-        self.center_x_entry.insert(0, "100")
+        self.center_x_entry.insert(0, math.floor(self.workspace_size/2))
         self.center_x_entry.grid(row=5, column=1)
         self.center_x_entry.bind("<KeyRelease>", self.on_center_change)
 
         ttk.Label(control_frame, text="Center Y:").grid(row=6, column=0, sticky="w")
         self.center_y_entry = ttk.Entry(control_frame, width=10)
-        self.center_y_entry.insert(0, "100")
+        self.center_y_entry.insert(0, math.floor(self.workspace_size/2))
         self.center_y_entry.grid(row=6, column=1)
         self.center_y_entry.bind("<KeyRelease>", self.on_center_change)
 
@@ -167,8 +168,8 @@ class ScanApp(tk.Tk):
         self.fig.colorbar(self.im, ax=self.ax)
 
         # Set fixed view initially (still works with shifted extent)
-        self.ax.set_xlim(80, 120)
-        self.ax.set_ylim(80, 120)
+        self.ax.set_xlim(math.floor(self.workspace_size/2)-0.1*(self.workspace_size/2), math.floor(self.workspace_size/2)+0.1*(self.workspace_size/2))
+        self.ax.set_ylim(math.floor(self.workspace_size/2)-0.1*(self.workspace_size/2), math.floor(self.workspace_size/2)+0.1*(self.workspace_size/2))
 
         # Add to Tkinter
         self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
@@ -233,6 +234,25 @@ class ScanApp(tk.Tk):
             ypos= center_y
         )
 
+    def _update_scanner(self):
+        try:
+            extension = int(self.ext_entry.get())
+            center_x = int(self.center_x_entry.get())
+            center_y = int(self.center_y_entry.get())
+            delay_ms = int(self.delay_entry.get())
+            stepsize = int(self.stepsize_entry.get())
+        except ValueError:
+            print("[error] Invalid input")
+            return
+        
+        self.scanner.extension = extension
+        self.scanner.center[0] = center_x
+        self.scanner.center[1] = center_y
+        self.scanner.delay_ms = delay_ms
+        self.scanner.stepsize = stepsize
+        
+        #print("UPDATED STEPSIIZE OF SCANNER TO:", self.scanner.stepsize)
+        
     def _refresh_ports(self):
         ports = serial.tools.list_ports.comports()
         port_list = [p.device for p in ports]
@@ -297,6 +317,7 @@ class ScanApp(tk.Tk):
         if self.scanner.abort:
             self.scanner.abort = False
 
+        self._update_scanner()
         self.scanner.run_scan()
         self.apply_caxis_limits()
 
@@ -331,7 +352,6 @@ class ScanApp(tk.Tk):
 
         # direction is expected to be ±1
         self.scanner.move_axis(axis, direction * step)
-        self.serial_conn.wait_for_ack()
     
     def on_closing(self):
         if self.serial_conn.is_open():

@@ -35,8 +35,8 @@ class Scanner:
         self.im.axes.figure.canvas.flush_events()
 
     
-    
     def run_scan(self):
+        print("STEPSIZE:", self.stepsize)
         if self.extension <= 0:
             print("[error] Area must be > 0")
             return
@@ -75,17 +75,25 @@ class Scanner:
         
         #print("Current Position:", self.xPos, self.yPos)
 
-        for i in range(math.floor((2*self.extension+1)/self.stepsize)):
-            for j in range(math.floor((2*self.extension+1)/self.stepsize)):
+        for i in range(math.floor(((2*self.extension)/self.stepsize))+1):
+            for j in range(math.floor(((2*self.extension)/self.stepsize))+1):
                 if self.abort:
                     return
                 #print("Current Position:", self.xPos, self.yPos)
                 
-                #measure ADC Value
+                # measure ADC Value
                 val = self.serial.adc_get_value()
-                if (0 <= self.yPos < self.data.shape[0]) and (0 <= self.xPos < self.data.shape[1]):
-                    self.data[self.yPos, self.xPos] = val if val is not None else np.nan 
-                    #print("saved ADC value to:", self.xPos, self.yPos)
+
+                if val is not None:
+                    half_step = math.floor(self.stepsize / 2)
+
+                    for yy in range(self.yPos - half_step, self.yPos + half_step + 1):
+                        for xx in range(self.xPos - half_step, self.xPos + half_step + 1):
+                            if (0 <= yy < self.data.shape[0]) and (0 <= xx < self.data.shape[1]):
+                                self.data[yy, xx] = val
+                else:
+                    if (0 <= self.yPos < self.data.shape[0]) and (0 <= self.xPos < self.data.shape[1]):
+                        self.data[self.yPos, self.xPos] = np.nan
                 
                 #Do x-step
                 if not self.move_axis('x', self.stepsize):
@@ -97,7 +105,7 @@ class Scanner:
                 return
             
             #do y-step
-            if i < math.floor((2*self.extension+1)/self.stepsize) - 1:
+            if i < math.floor(((2*self.extension)/self.stepsize))+1:
                 if not self.move_axis('y', self.stepsize):
                     return
 
@@ -129,7 +137,6 @@ class Scanner:
         if not self.serial.wait_for_ack(timeout=5.0):
             print(f"[error] No ACK for {cmd}")
             return False
-        time.sleep(self.delay_ms/1000)
         
         # Update internal tracking
         if axis == 'x':
